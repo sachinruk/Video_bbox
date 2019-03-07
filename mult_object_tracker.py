@@ -9,9 +9,11 @@ os.makedirs("./images", exist_ok=True)
 parser = argparse.ArgumentParser()
 parser.add_argument('--name', help='name of video file', type=str)
 parser.add_argument('--max_obj', help='Maximum number of objects followed', type=int, default=6)
+parser.add_argument('--max_frames', help='Maximum number of objects followed', type=int, default=500)
 parser.add_argument('--thresh', help='Threshold for scene changes', type=float, default=2)
 args = parser.parse_args()
 max_obj = args.max_obj
+max_frames = args.max_frames
 thresh = args.thresh
 
 fname =  os.path.basename(args.name)[:-4] #filename without extentsion
@@ -35,13 +37,14 @@ initBB = None
 
 frames = 1
 prev_mean = 0
-while ok:
+while ok and frames <= max_frames:
     frame_diff = abs(frame.mean() - prev_mean)
     prev_mean = frame.mean()
 
     frame = cv2.resize(frame, (h, w))
     name = fname + '_' + str(frames).zfill(4)
-    cv2.imwrite('./images/' + name + '.jpg', frame)
+    origFrame = frame.copy()
+    
     key = cv2.waitKey(1) & 0xFF
 
     # if the 's' key is selected, we are going to "select" a bounding
@@ -56,28 +59,28 @@ while ok:
             # to our multi-object tracker
             if initBB[2] == 0 or initBB[3] == 0: # if no width or height
                 break
+            # # start OpenCV object tracker using the supplied bounding box
             tracker = cv2.TrackerCSRT_create()
             trackers.add(tracker, frame, initBB)
 
-            # # start OpenCV object tracker using the supplied bounding box
-            # # coordinates, then start the FPS throughput estimator as well
-            # tracker.init(frame, initBB)
     elif key == ord("q"):
         break
 
     if initBB is not None:
         (tracking_ok, boxes) = trackers.update(frame)
 
-        # Draw bounding box
+        # save image and bounding box
         if tracking_ok:
-            with open('./labels/' + name + '.txt', 'a') as f:
-                for bbox in boxes:
-                    p1 = (int(bbox[0]), int(bbox[1]))
-                    p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
-                    cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
-                    centre = [0.5*(p1[1]+p2[1])/w, 0.5*(p1[0]+p2[0])/h]
-                    width, height = (bbox[3]/w, bbox[2]/h)
-                    f.write(f'0 {centre[0]:.6f} {centre[1]:.6f} {width:.6f} {height:.6f}\n')
+            if len(boxes) > 0: # if there is a box that is being tracked
+                cv2.imwrite('./images/' + name + '.jpg', origFrame)
+                with open('./labels/' + name + '.txt', 'a') as f:
+                    for bbox in boxes:
+                        p1 = (int(bbox[0]), int(bbox[1]))
+                        p2 = (int(bbox[0] + bbox[2]), int(bbox[1] + bbox[3]))
+                        cv2.rectangle(frame, p1, p2, (255,0,0), 2, 1)
+                        centre = [0.5*(p1[1]+p2[1])/w, 0.5*(p1[0]+p2[0])/h]
+                        width, height = (bbox[3]/w, bbox[2]/h)
+                        f.write(f'0 {centre[0]:.6f} {centre[1]:.6f} {width:.6f} {height:.6f}\n')
         else:
             initBB = None
 
