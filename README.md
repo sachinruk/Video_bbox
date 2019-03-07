@@ -1,5 +1,6 @@
 # Bounding Box Generator for Videos
 
+![](./myimage.gif)
 This tool takes a video and allows you to put bounding boxes on the frames, without having to do it on individual frames. It will automatically stop when scenes/ camera angels change prompting you for bounding boxes again.
 
 This tool OpenCV's CSRT tracker to achieve this.
